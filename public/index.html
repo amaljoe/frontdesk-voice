@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Frontdesk — AI Receptionist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">◉</span> Frontdesk <span class="tag">AI receptionist · 100% AssemblyAI</span></div>
+  <div class="stack"><span>Universal-Streaming STT</span><span>→</span><span>LLM Gateway</span><span>→</span><span>Streaming TTS</span></div>
+</header>
+
+<main>
+  <aside class="panel setup">
+    <h2>Line</h2>
+    <label>Business
+      <select id="persona"></select>
+    </label>
+    <label>Voice
+      <select id="voice">
+        <option value="">Persona default</option>
+        <option>alba</option><option>anna</option><option>charles</option><option>eve</option><option>george</option>
+        <option>iris</option><option>jane</option><option>jean</option><option>mary</option><option>michael</option>
+        <option>paul</option><option>reid</option><option>vera</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="phone" /> Telephone quality <small>8 kHz μ-law, like a real PSTN line</small></label>
+    <label class="check"><input type="checkbox" id="multi" /> Multilingual <small>auto-detect caller language, switch TTS voice language</small></label>
+    <button id="call" class="call">Start call</button>
+    <p class="hint">Use headphones for the cleanest barge-in. Talk over the agent at any time — it stops and listens.</p>
+    <details>
+      <summary>No mic? Type instead</summary>
+      <form id="typeform"><input id="typed" placeholder="Say something…" autocomplete="off" /><button>Send</button></form>
+    </details>
+  </aside>
+
+  <section class="stage">
+    <div class="orb-wrap">
+      <canvas id="orb" width="360" height="360"></canvas>
+      <div class="who"><div id="who-name">Ready</div><div id="who-biz" class="muted">Pick a business and start a call</div></div>
+      <div id="status" class="status idle">idle</div>
+    </div>
+    <div id="caption" class="caption"></div>
+    <div id="transcript" class="transcript"></div>
+  </section>
+
+  <aside class="panel side">
+    <h2>Latency <small>caller stops → first audio</small></h2>
+    <div class="metrics">
+      <div class="metric"><div class="v" id="m-first">–</div><div class="k">first audio</div></div>
+      <div class="metric"><div class="v" id="m-llm">–</div><div class="k">LLM first token</div></div>
+      <div class="metric"><div class="v" id="m-avg">–</div><div class="k">avg first audio</div></div>
+    </div>
+    <svg id="spark" viewBox="0 0 240 48" preserveAspectRatio="none"></svg>
+
+    <h2>Actions</h2>
+    <div id="actions" class="actions"><div class="muted">Bookings, orders and reservations the agent makes show up here.</div></div>
+
+    <h2>Business state</h2>
+    <pre id="state" class="state">–</pre>
+  </aside>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
