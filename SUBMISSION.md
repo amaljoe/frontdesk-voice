@@ -27,5 +27,5 @@ end-to-end tests.
 7. `Cancelled.audio_duration_seconds` is always 0. 8. Full reverse-engineered protocol reference.
 
 **Demo video:** out/frontdesk-demo.mp4 (upload to YouTube/Drive and paste the link)
-**Repo:** <paste link after pushing>
+**Repo:** https://github.com/amaljoe/frontdesk-voice
 **Tech:** Node.js, ws, Web Audio (AudioWorklet), AssemblyAI Universal-Streaming v3, LLM Gateway, Streaming TTS v1

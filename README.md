@@ -11,7 +11,7 @@ concierges. A single AssemblyAI key powers the whole loop:
           └──────────── barge-in: Cancel + discard ◀─────────── ▼ guarded tool execution          ▼ live captions
 ```
 
-🎬 **Demo video:** `out/frontdesk-demo.mp4`, a live, unedited browser call with a booking and a barge-in.
+🎬 **Demo video:** [`out/frontdesk-demo.mp4`](out/frontdesk-demo.mp4), a live, unedited browser call with a booking and a barge-in.
 🔍 **Security/reliability findings for the TTS API:** [FINDINGS.md](FINDINGS.md)
 
 ## What it does
