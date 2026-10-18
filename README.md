@@ -12,7 +12,19 @@ concierges. A single AssemblyAI key powers the whole loop:
 ```
 
 🎬 **Demo video:** [`out/frontdesk-demo.mp4`](out/frontdesk-demo.mp4), a live, unedited browser call with a booking and a barge-in.
-🔍 **Security/reliability findings for the TTS API:** [FINDINGS.md](FINDINGS.md)
+🔍 **Security/reliability findings for the TTS & Voice Agent APIs:** [FINDINGS.md](FINDINGS.md)
+🤖 **Built with AssemblyAI's own agent tooling** (CLI scaffolder + code generator, coding-agent skill): [BUILT_WITH_ASSEMBLYAI_AGENT.md](BUILT_WITH_ASSEMBLYAI_AGENT.md)
+
+## Two engines, switchable in the UI
+
+| | Custom pipeline (`agent.mjs`) | Voice Agent API (`voice-agent.mjs`) |
+|---|---|---|
+| Wiring | Universal-Streaming STT → LLM Gateway → Streaming TTS, orchestrated by us | One AssemblyAI socket does STT + LLM + TTS |
+| Actions | `ACTION {json}` lines + guardrails (the gateway model has no tool calling) | Real tool calls, same guardrails, refreshed prompt via `session.update` |
+| Barge-in | TTS `Cancel` + discard until `Cancelled`, LLM told what was heard | Server-side, plus a client flush on speech start |
+| Captions | Word-by-word from TTS `WordBoundaries` | Whole sentence (the API has no word timings) |
+| Extras | Phone mode, multilingual voice switching, typed input | Phone mode (`audio/pcmu`) |
+| First audio | ~0.6–1.3 s | ~0.55 s simple turns, 1–2 s with a tool call |
 
 ## What it does
 
@@ -61,6 +73,7 @@ npm run simulate -- dental out/b.wav --barge   # caller interrupts the agent mid
 npm run simulate -- pizza               # order flow with priced till
 npm run simulate -- hotel               # French caller → language + voice switch
 npm run simulate -- dental out/p.wav --phone   # 8 kHz μ-law phone line
+npm run simulate -- dental out/va.wav --engine voice-agent   # same call on the Voice Agent API
 ```
 
 Browser test and demo recording use Chrome with a fake microphone fed from a WAV file:
@@ -71,7 +84,10 @@ Browser test and demo recording use Chrome with a fake microphone fed from a WAV
 
 | | |
 |---|---|
-| `agent.mjs` | One call: STT ⇄ LLM ⇄ TTS orchestration, barge-in, latency metrics, action execution |
+| `agent.mjs` | Custom-pipeline engine: STT ⇄ LLM ⇄ TTS orchestration, barge-in, latency metrics, action execution |
+| `voice-agent.mjs` | Voice Agent API engine with real tool calls, built with the AssemblyAI coding-agent skill |
+| `assemblyai-generated/` | Code produced by AssemblyAI's CLI (`assembly init voice-agent`, `assembly agent --show-code`), used as reference |
+| `AGENTS.md` | Context for coding agents (including AssemblyAI's `assembly live`). Install the AssemblyAI skill with `npx skills add AssemblyAI/assemblyai-skill` |
 | `personas.mjs` | Businesses, prompts, state, action guardrails |
 | `server.mjs` | Static UI + `/call` WebSocket bridge (key stays server-side) |
 | `public/` | UI, mic capture worklet (→16 kHz), gapless player with an audio-clock ↔ word-boundary map |

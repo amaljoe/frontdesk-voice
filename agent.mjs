@@ -304,7 +304,9 @@ export class Call {
       this.history.push({ role: 'assistant', content: speakable().trim() });
       this.event('metric', { name: 'llm_total', ms: Date.now() - this.turnEndAt });
       this.runActions(full, userText, true);
-      if (!/ACTION/.test(full) && /\b(book(ed)?|reserv(ed|e)|added|placed|confirm(ed)?|réserv|noté)\b/i.test(speakable())) this.recoverAction(userText);
+      // Claimed in past tense ("I've booked you", "you're all set"), but no matching ACTION line came with it.
+      const claimed = /\b(i'?ve|i have|you'?re|is|are|got you)\b[^.?!]{0,30}\b(booked|reserved|added|placed|all set|confirmed)\b|\bnoté\b|\bréservé/i.test(speakable());
+      if (claimed && !/"type":"(book|reserve|add_item|place_order)"/.test(full.replace(/\s/g, ''))) this.recoverAction(userText);
     } catch (e) {
       if (e.name !== 'AbortError') this.event('error', { source: 'llm', message: e.message });
     } finally {

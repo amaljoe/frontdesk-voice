@@ -5,3 +5,4 @@ out/*.webm
 out/sim-*.wav
 out/demo-raw*
 out/demo-mic.wav
+.claude/

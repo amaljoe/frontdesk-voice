@@ -3,6 +3,7 @@ import { startMic, Player } from './audio.js';
 const $ = (id) => document.getElementById(id);
 let ws, ctx, player, analyser, stopMic, call = null;
 let agentTurn = null;     // current agent bubble
+let engine = 'pipeline';
 let userPartial = null;   // current partial-transcript bubble
 let words = [];           // {word, at, end, el} scheduled for highlighting
 const firstAudio = [];
@@ -34,7 +35,8 @@ async function dial() {
   player = new Player(ctx, analyser);
   player.onIdle = () => { ws?.send(JSON.stringify({ type: 'playback_done' })); if (call) status('listening'); };
   $('transcript').innerHTML = ''; $('actions').innerHTML = ''; $('caption').innerHTML = '';
-  const q = new URLSearchParams({ persona: $('persona').value, voice: $('voice').value, phone: $('phone').checked ? 1 : 0, multilingual: $('multi').checked ? 1 : 0 });
+  engine = $('engine').value;
+  const q = new URLSearchParams({ persona: $('persona').value, voice: $('voice').value, phone: $('phone').checked ? 1 : 0, multilingual: $('multi').checked ? 1 : 0, engine: $('engine').value });
   ws = new WebSocket(`${location.origin.replace('http', 'ws')}/call?${q}`);
   ws.binaryType = 'arraybuffer';
   call = { micLevel: 0 };
@@ -98,10 +100,11 @@ function onEvent(ev) {
       break;
     case 'agent':
       if (!agentTurn) { agentTurn = bubble('agent', '', $('who-name').textContent); agentTurn.spoken = ''; }
-      if (ev.final) agentTurn.querySelector('.t').textContent = ev.text;
-      else agentTurn.querySelector('.t').textContent += (agentTurn.querySelector('.t').textContent ? ' ' : '') + ev.text;
+      if (ev.final) { agentTurn.querySelector('.t').textContent = ev.text; if (engine === 'voice-agent') agentTurn = null; } // one bubble per server reply
+      else agentTurn.querySelector('.t').textContent += ev.raw ? ev.text : (agentTurn.querySelector('.t').textContent ? ' ' : '') + ev.text;
       break;
     case 'words': scheduleWords(ev); break;
+    case 'caption': $('caption').textContent = ev.text; break;
     case 'interrupt': {
       // What did the caller actually hear? Tell the server so the LLM remembers the truth.
       const heard = words.filter((w) => w.at <= ctx.currentTime).map((w) => w.word).join(' ');

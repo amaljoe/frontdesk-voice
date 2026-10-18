@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
 import { Call, LLM_MODEL } from './agent.mjs';
+import { VoiceAgentCall } from './voice-agent.mjs';
 import { personas } from './personas.mjs';
 
 if (!process.env.ASSEMBLYAI_API_KEY) { console.error('Set ASSEMBLYAI_API_KEY (see .env.example)'); process.exit(1); }
@@ -28,7 +29,8 @@ const wss = new WebSocketServer({ server, path: '/call' });
 wss.on('connection', (ws, req) => {
   const q = new URL(req.url, 'http://x').searchParams;
   const line = { send: (m) => ws.readyState === 1 && ws.send(Buffer.isBuffer(m) ? m : JSON.stringify(m)) };
-  const call = new Call(line, {
+  const Engine = q.get('engine') === 'voice-agent' ? VoiceAgentCall : Call;
+  const call = new Engine(line, {
     persona: q.get('persona'), voice: q.get('voice') || undefined, language: q.get('language') || undefined,
     phone: q.get('phone') === '1', multilingual: q.get('multilingual') === '1',
   });
@@ -38,7 +40,7 @@ wss.on('connection', (ws, req) => {
     const j = JSON.parse(m);
     if (j.type === 'heard') call.heard(j.text);
     else if (j.type === 'playback_done') call.playbackDone();
-    else if (j.type === 'text') { line.send({ type: 'user', text: j.text, final: true }); call.respond(j.text); }
+    else if (j.type === 'text') { if (Engine === Call) line.send({ type: 'user', text: j.text, final: true }); call.respond(j.text); }
   });
   ws.on('close', () => call.close());
 });

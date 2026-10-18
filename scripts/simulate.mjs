@@ -1,16 +1,18 @@
 // Headless end-to-end test: an AssemblyAI TTS "caller" phones the agent.
 // Caller lines are synthesized at 16 kHz and streamed in real time into the agent's STT;
 // both sides are mixed into a stereo WAV (L = caller, R = agent) for listening back.
-//   node scripts/simulate.mjs [persona] [out.wav] [--barge]
+//   node scripts/simulate.mjs [persona] [out.wav] [--barge] [--phone] [--engine voice-agent]
 import 'dotenv/config';
 import fs from 'node:fs';
 import WebSocket from 'ws';
 import { Call } from '../agent.mjs';
+import { VoiceAgentCall } from '../voice-agent.mjs';
 
 const persona = process.argv[2] || 'dental';
 const out = process.argv[3] || `out/sim-${persona}.wav`;
 const barge = process.argv.includes('--barge');
 const phone = process.argv.includes('--phone'); // 8 kHz mu-law agent audio, decoded for the mix
+const engine = process.argv.includes('--engine') ? process.argv[process.argv.indexOf('--engine') + 1] : 'pipeline';
 const scripts = {
   dental: ["Hi, I'd like to book a teeth cleaning.", "Tuesday afternoon works best for me.", "Two thirty is perfect. My name is Priya Sharma.", "That's everything, thank you so much, bye!"],
   pizza: ["Hey, I'd like to order for pickup.", "One large pepperoni please.", "And garlic knots. That's it, name is Sam.", "Thanks, bye!"],
@@ -49,7 +51,7 @@ let agentDone = null, turnDone = 0, inFlight = 0;
 const line = {
   send(m) {
     if (Buffer.isBuffer(m)) { agentTrack.push({ ms: Date.now() - t0, pcm: phone ? mulawTo24k(m) : m }); return; }
-    if (m.type === 'agent' && !m.final) console.log(`  AGENT  ${m.text}`);
+    if (m.type === 'agent' && !m.final && engine !== 'voice-agent') console.log(`  AGENT  ${m.text}`); // voice-agent deltas are single words
     if (m.type === 'agent' && m.final) console.log(`  AGENT  ${m.text}`);
     if (m.type === 'user' && m.final) console.log(`CALLER   ${m.text}`);
     if (m.type === 'metric') { metrics.push(m); console.log(`         [${m.name} ${m.ms}ms]`); }
@@ -81,9 +83,10 @@ async function waitAgent() {
 }
 
 const language = persona === 'hotel' ? 'french' : 'english';
-const call = new Call(line, { persona, multilingual: persona === 'hotel', phone });
+const Engine = engine === 'voice-agent' ? VoiceAgentCall : Call;
+const call = new Engine(line, { persona, multilingual: persona === 'hotel', phone });
 await call.start();
-console.log(`== ${persona}: ${call.p.business} (${call.p.name}, voice ${call.voice})`);
+console.log(`== ${persona}: ${call.p.business} (${call.p.name}, voice ${call.voice}, engine ${engine})`);
 const voice = await callerVoice(language === 'french' ? 'estelle' : 'paul', language);
 const pre = [];
 for (const l of lines) pre.push(await voice.say(l));

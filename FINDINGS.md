@@ -15,6 +15,10 @@ observed server output. Most use `node` and the `ws` package. Repro snippets are
 | 6 | Low | DX | Preset voices are bound to one language. English has 13; fr/de/it/pt/es have **one voice each** (`estelle`, `juergen`, `giovanni`, `rafael`, `lola`). This is only discoverable from error messages. |
 | 7 | Low | DX | `Cancelled` carries `audio_duration_seconds: 0` even when seconds of audio were already sent for the cancelled flush. |
 | 8 | Info | Docs | The protocol is fully discoverable from error strings (message types, parameter enums, limits). That's helpful, but undocumented. Reference below. |
+| 10 | Medium (reliability) | Voice Agent | A caller turn that lands just after `reply.started` vanishes: `reply.done` says `completed`, there's no audio, no transcript and no `interrupted`. The caller's request ("and garlic knots") is silently lost. |
+| 11 | Low | Voice Agent | `input/output.format.sample_rate: 16000` is echoed as accepted in `session.updated`, then the session dies with `internal_error` (1011) before `session.ready`. |
+| 12 | Low | Voice Agent | Times come out oddly in speech ("nine oh zero AM", "two o'clock thirty PM"). There's no text-input message. `transcript.user`/`reply.started` often arrive before `input.speech.stopped`. |
+| 9 | Low | DX | AssemblyAI's own coding agent (`assembly live`) can't take a turn on a hackathon key: the only model rejects tools, and the CLI thinks TTS is sandbox-only. |
 
 Things that are good and worth keeping: errors are precise and actionable. Missing or bad keys get a
 clean `1008`. Expired tokens are rejected (`Signature has expired`). The 2000-character `Generate`
@@ -121,3 +125,40 @@ Query params:
 
 Notes: `flush_id` increases per Flush, and a Cancel uses up an id. WordBoundaries times are relative to the
 session's audio clock (`audio_start_ms` + `start`). The session lasts about 1 h (`expires_at`).
+
+## 9. AssemblyAI's coding agent can't run on a hackathon key
+
+`assembly live` (the CLI's tool-using agent: deepagents on the LLM Gateway) always attaches tool definitions,
+even with `--no-files`. A hackathon key only has `qwen3.5-4b-32k-fast`, which rejects tools, so every turn
+fails:
+
+```
+$ assembly live task.wav --model qwen3.5-4b-32k-fast -o text
+Error code: 400 - {'metadata': {'errors': ['model qwen3.5-4b-32k-fast does not support tools']}, ...}
+```
+Its default model `kimi-k2.5` comes back as `model kimi-k2.5 is not supported` on the production gateway. The released
+CLI (`90f7d7c`) also sets `streaming_tts_host=""` for production, so `live`/`speak`/`dub` refuse to run
+("only available in the sandbox") even though the production TTS host this hackathon uses is live.
+**Suggested fix:** enable one tool-capable model on hackathon keys, or have `live` fall back to a tool-free
+brain when the model lacks tools. Ship the production TTS host in the CLI.
+
+## 10-12. Voice Agent API (`wss://agents.assemblyai.com/v1/ws`)
+
+These were found while building the second engine, [`voice-agent.mjs`](voice-agent.mjs), with the AssemblyAI coding-agent skill.
+
+- **10. Swallowed turns.** If the caller speaks again right after the server sends `reply.started`, the reply comes
+  back as `reply.done {status: "completed"}` with no `reply.audio`, no `transcript.agent` and no `interrupted`
+  status, and the new user turn never gets a response. In the pizza sim, "And garlic knots." was lost this way and
+  the agent later said "Wait, I missed the garlic knots". Expected: the reply is marked `interrupted`, or the
+  new turn gets answered.
+- **11. Accepted-then-fatal sample rate.** `session.update` with `input.format.sample_rate: 16000` (or the
+  same on output) comes back as accepted in `session.updated`. The session then closes with `internal_error`
+  (1011) before `session.ready`. It should be rejected up front with `invalid_value`, like an unknown voice is.
+- **12. Smaller issues.**
+  - Clock times are spoken oddly: `9:00 AM` comes out as "nine oh zero AM", `2:30 PM` as "two o'clock thirty PM".
+  - `reply.audio` carries its audio in `data`, but the skill's event table implies `audio`.
+  - There's no way to send typed user text: `input.text`, `conversation.item.create` and `user.message` all
+    return `invalid_format`.
+  - `transcript.user` and `reply.started` often arrive *before* `input.speech.stopped`.
+  - The default end-of-turn silence splits "2:30 is perfect. My name is…" into two turns, so the caller ends
+    up barging in on their own answer.
