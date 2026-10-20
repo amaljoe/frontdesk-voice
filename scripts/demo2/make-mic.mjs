@@ -1,15 +1,30 @@
 // Scripted caller audio for the two app segments (Chrome fake-mic input).
+// Gaps are tuned so the AGENT finishes its sentence before the next caller line — except ONE
+// deliberate barge-in in the pipeline segment, where the caller cuts in while the agent is talking.
 import 'dotenv/config';
 import fs from 'node:fs';
 import WebSocket from 'ws';
 const RATE = 48000;
+// [gapBeforeThisLine, text]. Gap = silence to leave for the agent to speak first.
 const scripts = {
-  // Pipeline: barge-in is the hero moment. Second line lands while the agent is mid-reply.
-  pipeline: [[1.5, "Hi! I'd like to book a teeth cleaning, please."], [3.0, 'Sorry, actually, do you have anything on Wednesday instead?'], [6.5, "Wednesday at nine is great. My name is Alex Kim."], [6.0, 'Perfect, thanks. Bye!'], [5.0, null]],
-  // Voice Agent: clean booking that fires a real tool call.
-  va: [[1.5, "Hi, I'd like to book a cleaning for Tuesday afternoon."], [6.0, "Two thirty is great. My name is Priya Sharma."], [6.5, "That's everything, thank you. Goodbye!"], [5.0, null]],
+  pipeline: [
+    [1.0, "Hi! I'd like to book a teeth cleaning, please."],
+    // agent starts offering slots; caller cuts in ~1.8s into that reply — the showcase barge-in.
+    [2.6, 'Sorry, could you check Wednesday instead?'],  // deliberate barge-in: lands while Ivy is mid-reply
+    [7.0, 'Wednesday at nine is perfect.'],   // let the agent answer in full
+    [6.5, "My name is Alex Kim."],
+    [6.5, 'Great, thank you. Bye!'],
+    [6.0, null],
+  ],
+  va: [
+    [1.0, "Hi, I'd like to book a cleaning for Tuesday afternoon."],
+    [7.0, "Two thirty is great."],
+    [6.5, "My name is Priya Sharma."],
+    [6.5, "That's everything, thank you. Goodbye!"],
+    [6.0, null],
+  ],
 };
-async function voice() { // one reusable caller socket (session cap)
+async function voice() {
   const ws = new WebSocket(`wss://streaming-tts.assemblyai.com/v1/ws?voice=paul&sample_rate=${RATE}`, { headers: { Authorization: process.env.ASSEMBLYAI_API_KEY } });
   await new Promise((r) => ws.once('open', r));
   return { say: (text) => new Promise((res) => { const c = []; const h = (m) => { const j = JSON.parse(m); if (j.type === 'Audio') c.push(Buffer.from(j.audio, 'base64')); if (j.type === 'FlushDone') { ws.off('message', h); res(Buffer.concat(c)); } }; ws.on('message', h); ws.send(JSON.stringify({ type: 'Generate', text })); ws.send(JSON.stringify({ type: 'Flush' })); }), close: () => ws.terminate() };

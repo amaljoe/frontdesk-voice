@@ -16,6 +16,9 @@ const b = await puppeteer.launch({
 const p = await b.newPage();
 await p.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
 p.on('pageerror', (e) => console.log('PAGEERR', e.message));
+const marks = [];
+await p.evaluateOnNewDocument(() => { window.__marks = []; const o = WebSocket.prototype; });
+p.on('console', (m) => { const t = m.text(); if (t.startsWith('MARK')) marks.push(t); });
 await p.goto(`${url}/?record`);
 await p.select('#persona', persona);
 await p.select('#engine', engine);
@@ -36,5 +39,6 @@ await p.waitForFunction(() => window.__recording, { timeout: 15000 });
 fs.writeFileSync(`out/demo2/audio-${name}.webm`, Buffer.from(await p.evaluate(() => window.__recording), 'base64'));
 const actions = await p.$eval('#actions', (e) => e.innerText).catch(() => '');
 const transcript = await p.$eval('#transcript', (e) => e.innerText).catch(() => '');
-console.log(`\n=== ${name} (${engine}) ===\n${transcript}\n--- ACTIONS: ${actions.replace(/\n/g, ' ')}`);
+const cuts = await p.$$eval('.msg.cut', (els) => els.length).catch(() => 0);
+console.log(`\n=== ${name} (${engine}) ===\n${transcript}\n--- ACTIONS: ${actions.replace(/\n/g, ' ')}\n--- barge-in bubbles (cut): ${cuts}`);
 await b.close();
