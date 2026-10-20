@@ -8,3 +8,7 @@ out/demo-mic.wav
 .claude/
 .DS_Store
 **/.DS_Store
+out/demo2/
+out/frames-*/
+out/demo-audio.webm
+out/*-raw*.mp4
