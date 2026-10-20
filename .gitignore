@@ -6,3 +6,5 @@ out/sim-*.wav
 out/demo-raw*
 out/demo-mic.wav
 .claude/
+.DS_Store
+**/.DS_Store
