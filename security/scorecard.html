@@ -1,0 +1,186 @@
+<title>Token Trust Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: a single report column — verdict banner, claim-vs-reality split, finding cards, evidence terminal. */
+  :root {
+    --bg: #f3f4f1;
+    --panel: #ffffff;
+    --ink: #16181d;
+    --muted: #5c6472;
+    --line: #dcdfe4;
+    --accent: #2f5be6;
+    --crit: #c02a3b;
+    --warn: #b8730a;
+    --ok: #1f8a5b;
+    --term-bg: #121620;
+    --term-fg: #d7dce6;
+    --term-dim: #7f8aa0;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: "Inter", system-ui, -apple-system, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c0e13; --panel: #14171f; --ink: #e9ecf2; --muted: #9099a8; --line: #262b36;
+      --accent: #6d8bff; --crit: #ff6b7d; --warn: #e5a23c; --ok: #4fd39a;
+      --term-bg: #090b10; --term-fg: #d7dce6; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0e13; --panel: #14171f; --ink: #e9ecf2; --muted: #9099a8; --line: #262b36;
+    --accent: #6d8bff; --crit: #ff6b7d; --warn: #e5a23c; --ok: #4fd39a;
+    --term-bg: #090b10; --term-fg: #d7dce6; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 920px; margin: 0 auto; padding-block: 40px 64px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.08; margin: 10px 0 8px; text-wrap: balance; letter-spacing: -0.02em; }
+  h1 b { color: var(--accent); font-weight: 800; }
+  .lede { color: var(--muted); font-size: 17px; max-width: 64ch; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 18px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .meta span b { color: var(--ink); font-weight: 600; }
+
+  .verdict { margin: 32px 0; border: 1px solid var(--line); border-left: 4px solid var(--crit); border-radius: 12px;
+    background: var(--panel); padding: 20px 22px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .verdict .big { font-family: var(--mono); font-size: 40px; font-weight: 700; color: var(--crit); font-variant-numeric: tabular-nums; line-height: 1; }
+  .verdict .big small { display: block; font-size: 12px; color: var(--muted); letter-spacing: .1em; margin-top: 6px; }
+  .verdict p { margin: 0; }
+  .verdict p strong { font-size: 16px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0 34px; }
+  .split > div { border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; background: var(--panel); min-width: 0; }
+  .split .claim { border-top: 3px solid var(--muted); }
+  .split .reality { border-top: 3px solid var(--crit); }
+  .split h3 { margin: 0 0 10px; font-size: 13px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .split .claim h3 { color: var(--muted); } .split .reality h3 { color: var(--crit); }
+  .split blockquote { margin: 0 0 10px; font-size: 15px; color: var(--ink); }
+  .split .src { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .split ul { margin: 0; padding-left: 18px; } .split li { margin: 4px 0; }
+
+  h2.sec { font-size: 13px; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 36px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+  .card > summary { list-style: none; cursor: pointer; padding: 16px 20px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; }
+  .card > summary::-webkit-details-marker { display: none; }
+  .card[open] > summary { border-bottom: 1px solid var(--line); }
+  .pill { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .pill.crit { background: color-mix(in srgb, var(--crit) 16%, transparent); color: var(--crit); }
+  .pill.med  { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .pill.low  { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+  .pill.ok   { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+  .card .title { font-weight: 600; font-size: 15.5px; min-width: 0; }
+  .card .chev { color: var(--muted); font-family: var(--mono); transition: transform .15s; }
+  .card[open] .chev { transform: rotate(90deg); }
+  .card .body { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .card .body p { margin: 0; }
+  .card .label { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .fix { border-left: 3px solid var(--ok); padding-left: 12px; }
+
+  .term { background: var(--term-bg); border-radius: 12px; border: 1px solid var(--line); overflow: hidden; margin-bottom: 14px; }
+  .term .bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .term .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .term .bar .f { margin-left: 8px; font-family: var(--mono); font-size: 12px; color: var(--term-dim); }
+  .term pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--term-fg); }
+  .term .c { color: var(--term-dim); } .term .g { color: #4fd39a; } .term .r { color: #ff7a8a; } .term .b { color: #6d8bff; }
+  .note { font-size: 13.5px; color: var(--muted); } .note b { color: var(--ink); }
+  footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  a { color: var(--accent); }
+  @media (max-width: 560px) { .split, .verdict { grid-template-columns: 1fr; } .verdict .big { font-size: 32px; } }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Responsible disclosure · authorized hackathon testing</div>
+  <h1>If you build it <b>exactly the way the quickstart shows</b>, is the token safe?</h1>
+  <p class="lede">AssemblyAI's own Voice Agent starter puts a browser token in a client-visible WebSocket URL, and calls it “single-use” to justify that. We tested the claim on production. It doesn't hold — three ways.</p>
+  <div class="meta">
+    <span><b>Target:</b> production real-time APIs</span>
+    <span><b>Date:</b> 2026-10-20</span>
+    <span><b>Scope:</b> our own hackathon key only</span>
+    <span><b>Repros:</b> security/probes/</span>
+  </div>
+
+  <div class="verdict">
+    <div class="big">5/5<small>SESSIONS, ONE TOKEN</small></div>
+    <p><strong>One minted browser token opened five Voice Agent sessions at once</strong>, kept working on reuse for its full 600-second life, and drove paid TTS, STT and the Voice Agent interchangeably. The one-time promise is the basis for exposing it in a URL.</p>
+  </div>
+
+  <div class="split">
+    <div class="claim">
+      <h3>What the starter says</h3>
+      <blockquote>“a short-lived, <strong>single-use</strong> token minted here — so your API key never reaches the client.”</blockquote>
+      <blockquote>“The browser connects straight to the Voice Agent API with a <strong>one-time token</strong>.”</blockquote>
+      <div class="src">assembly init voice-agent → api/index.py, static/index.html, README.md</div>
+    </div>
+    <div class="reality">
+      <h3>What production does</h3>
+      <ul>
+        <li>Reused across sequential opens — never spent.</li>
+        <li>5 concurrent sessions from one token.</li>
+        <li>A streaming token also drives TTS and the Voice Agent, and vice-versa.</li>
+        <li>No per-token connection or spend cap.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">Findings</h2>
+  <div class="cards">
+    <details class="card" open>
+      <summary><span class="pill crit">High · A</span><span class="title">“Single-use” tokens are reusable and multi-session</span><span class="chev">›</span></summary>
+      <div class="body">
+        <div><div class="label">Impact</div><p>A token scraped from a URL, a log line, or a shared link keeps working for its whole 600s life — not the one shot the docs promise. Every app built from the official starter inherits this.</p></div>
+        <div class="fix"><div class="label">Fix</div><p>Bind a <span style="font-family:var(--mono)">jti</span> and burn it on the first <span style="font-family:var(--mono)">session.ready</span>. If multi-use is intended, stop calling it “single-use” and offer <span style="font-family:var(--mono)">max_sessions=1</span>.</p></div>
+      </div>
+    </details>
+    <details class="card">
+      <summary><span class="pill crit">High · B</span><span class="title">Tokens aren't scoped to the product they were minted for</span><span class="chev">›</span></summary>
+      <div class="body">
+        <div><div class="label">Impact</div><p>A transcription widget that only needs speech-to-text hands out, in its page, a credential that also synthesizes speech and runs full $4.50/hr voice-agent sessions. Least privilege is violated by default.</p></div>
+        <div class="fix"><div class="label">Fix</div><p>Stamp an <span style="font-family:var(--mono)">aud</span>/scope claim into the token at mint time and enforce it at each service's handshake. Highest-leverage fix — it also contains finding A's blast radius.</p></div>
+      </div>
+    </details>
+    <details class="card">
+      <summary><span class="pill med">Medium · C</span><span class="title">No per-token cap → a leak is a cost-amplification vector</span><span class="chev">›</span></summary>
+      <div class="body">
+        <div><div class="label">Impact</div><p>Pricing is public. One scraped 600s token authorizes up to ten minutes of <em>concurrent</em> paid sessions across STT + TTS + Voice Agent + LLM, per use, billed to the account owner. Harvested at scale from a popular starter-based app, that adds up.</p></div>
+        <div class="fix"><div class="label">Fix</div><p>Cap concurrent sessions per token (ideally 1) and expose per-key spend/rate limits.</p></div>
+      </div>
+    </details>
+    <details class="card">
+      <summary><span class="pill ok">Fair · ✓</span><span class="title">What's already done right</span><span class="chev">›</span></summary>
+      <div class="body">
+        <p><b>TTL is enforced and capped at 600s</b> — a 3s token was rejected after 8s; 1-day and 1-year requests are refused with <span style="font-family:var(--mono)">422 ≤ 600</span>. This bounds every finding above to a ten-minute window.</p>
+        <p><b>Errors don't leak.</b> Malformed JSON, bogus fields, path-like voice names and bad keys all return terse, non-reflective errors — no internal hosts, file paths, or stack traces.</p>
+      </div>
+    </details>
+  </div>
+
+  <h2 class="sec">Evidence — reproduced on production</h2>
+  <div class="term">
+    <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="f">node security/probes/token-concurrency-scope.mjs</span></div>
+<pre><span class="c"># one token, five sessions at once</span>
+one token, 5 simultaneous VA sessions: <span class="r">5/5 accepted</span>
+
+<span class="c"># cross-product: does a token open a service it wasn't minted for?</span>
+streaming token on TTS:         <span class="r">ACCEPTED — cross-product</span> <span class="c">(Begin)</span>
+streaming token on Voice Agent: <span class="r">ACCEPTED — cross-product</span> <span class="c">(session.updated)</span>
+voice-agent token on TTS:       <span class="r">ACCEPTED — cross-product</span> <span class="c">(Begin)</span>
+voice-agent token on streaming: <span class="r">ACCEPTED — cross-product</span> <span class="c">(Begin)</span></pre>
+  </div>
+  <div class="term">
+    <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="f">node security/probes/token-lifecycle.mjs</span></div>
+<pre>use #1: <span class="b">ACCEPTED</span>
+use #2 <span class="c">(same token, after #1 closed)</span>: <span class="r">ACCEPTED — NOT single-use</span>
+use #3 <span class="c">(same token again)</span>: <span class="r">ACCEPTED</span>
+expiry <span class="c">(3s TTL, used after 8s)</span>: <span class="g">rejected — TTL enforced ✓</span>
+TTL request 86400s: <span class="g">422 ≤ 600 ✓</span>   TTL request 31536000s: <span class="g">422 ≤ 600 ✓</span></pre>
+  </div>
+  <p class="note"><b>How to read this:</b> each line is the first server frame after a connection. <span style="color:var(--crit)">Red</span> = a connection that should have been refused but was accepted; <span style="color:var(--ok)">green</span> = a control working as it should.</p>
+
+  <footer>
+    Reported to <b>security@assemblyai.com</b> to help, not to exploit. All tests used a single hackathon key against the tester's own account; no other account was touched. Full write-up and runnable reproductions: <a href="https://github.com/amaljoe/frontdesk-voice">github.com/amaljoe/frontdesk-voice</a> → <span style="font-family:var(--mono)">security/REPORT.md</span>.
+  </footer>
+</div>

@@ -1,4 +1,10 @@
-# AssemblyAI Streaming TTS (`wss://streaming-tts.assemblyai.com/v1/ws`): findings report
+# AssemblyAI real-time APIs: findings report
+
+> **The headline security finding** — the token model (findings 1, 2, 2b) — has its own rigorous,
+> responsibly-disclosed write-up with runnable reproductions in **[security/REPORT.md](security/REPORT.md)**.
+> The rest of this file is the TTS/Voice-Agent protocol notes gathered while building.
+
+## AssemblyAI Streaming TTS (`wss://streaming-tts.assemblyai.com/v1/ws`)
 
 I tested the API while building Frontdesk (2026-10-17/18). There are no public docs for this endpoint yet,
 so I worked out the protocol by probing it. Every finding below comes with a reproduction and the
@@ -7,13 +13,14 @@ observed server output. Most use `node` and the `ws` package. Repro snippets are
 
 | # | Severity | Area | Finding |
 |---|---|---|---|
-| 1 | **Medium (security)** | Auth | A Streaming **STT** temporary token (`/v3/token`) is accepted by the **TTS** service. Token scope is not bound to a product. |
-| 2 | **Medium (security)** | Auth | Temporary tokens are **not single-use**. One token opened 2 concurrent STT sessions and was reused for further sessions until its expiry. |
+| 1 | **High (security)** | Auth | **Browser tokens are not product-scoped.** A token minted at `streaming/v3/token` drives paid TTS *and* the Voice Agent; a `agents/v1/token` token drives STT *and* TTS. Confirmed all four directions on production. See [security/REPORT.md](security/REPORT.md) finding B. |
+| 2 | **High (security)** | Auth | **Browser tokens are reusable and multi-session, though the official starter calls them "single-use / one-time".** One token opened **5 concurrent Voice Agent sessions** and worked across repeated reuses for its full 600 s life. [security/REPORT.md](security/REPORT.md) finding A. |
 | 3 | Medium (reliability) | Control | `Cancel` does **not** stop flushes that are already being synthesized. Audio for every queued flush keeps streaming, and `Cancelled` only arrives after it. |
 | 4 | Medium (reliability) | Quota | A cap of **5 concurrent TTS sessions** per account. Closed or terminated sessions **keep counting for 30-60 s**, so reconnect patterns lock you out. |
 | 5 | Low | Input | SSML or markup is **read aloud literally**: `<speak><break time="3s"/>` is spoken and shows up in WordBoundaries. |
 | 6 | Low | DX | Preset voices are bound to one language. English has 13; fr/de/it/pt/es have **one voice each** (`estelle`, `juergen`, `giovanni`, `rafael`, `lola`). This is only discoverable from error messages. |
 | 7 | Low | DX | `Cancelled` carries `audio_duration_seconds: 0` even when seconds of audio were already sent for the cancelled flush. |
+| 2b | Medium (security) | Auth | No per-token connection/spend cap: one scraped 600 s token = up to 10 min of **concurrent paid work across STT+TTS+Voice Agent+LLM**, billed to the account owner. [security/REPORT.md](security/REPORT.md) finding C. Note: TTL *is* enforced and capped at 600 s (good), and error messages don't leak internals (good). |
 | 8 | Info | Docs | The protocol is fully discoverable from error strings (message types, parameter enums, limits). That's helpful, but undocumented. Reference below. |
 | 10 | Medium (reliability) | Voice Agent | A caller turn that lands just after `reply.started` vanishes: `reply.done` says `completed`, there's no audio, no transcript and no `interrupted`. The caller's request ("and garlic knots") is silently lost. |
 | 11 | Low | Voice Agent | `input/output.format.sample_rate: 16000` is echoed as accepted in `session.updated`, then the session dies with `internal_error` (1011) before `session.ready`. |

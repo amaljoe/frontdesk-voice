@@ -1,0 +1,37 @@
+To: security@assemblyai.com
+Subject: Browser-token model: "single-use" tokens are reusable, multi-session, and cross-product (production)
+
+Hi AssemblyAI security team,
+
+While building a project for TTS Hackathon #2 (which invites security findings), I tested the real-time
+browser-token model on production using only my own hackathon key. Three issues, all stemming from one root
+cause, plus a minor one. Full write-up + runnable repros: https://github.com/amaljoe/frontdesk-voice (security/).
+
+Context: your Voice Agent starter (`assembly init voice-agent`) mints a token server-side and places it in a
+client WebSocket URL, justified in its own code and page copy as a "short-lived, single-use / one-time token".
+Single-use is the security basis for exposing a token in a URL. That property does not hold.
+
+A) Tokens are NOT single-use or single-session. One minted Voice Agent token opened 5 concurrent sessions and
+   worked across repeated sequential reuses for its full life. (security/probes/token-lifecycle.mjs,
+   token-concurrency-scope.mjs)
+
+B) Tokens are NOT product-scoped. A token from streaming/v3/token drives paid Streaming TTS and the Voice
+   Agent; a token from agents/v1/token drives Streaming STT and TTS. (token-concurrency-scope.mjs)
+
+C) No per-token connection/spend cap, so one scraped 600s token = up to 10 minutes of concurrent paid work
+   across STT + TTS + Voice Agent + LLM Gateway, billed to the account owner. (cost-of-leak.mjs)
+
+D) Minor: GET /v1/token with an invalid key returns HTTP 404 "Invalid API key" (expected 401/403).
+
+What's already right: TTL is enforced and capped at 600s (3s token rejected after 8s; >600s requests 422'd),
+which bounds all of the above to a 10-minute window. Error messages are clean — no internal hosts, paths, or
+stack traces. Good hygiene.
+
+Suggested fixes: (1) add an audience/scope claim per product and enforce it at each handshake — this is the
+highest-leverage fix; (2) make tokens genuinely single-use (bind a jti, burn on first session), or stop
+describing them as single-use in the starter and docs and offer max_sessions=1; (3) cap concurrent sessions
+per token.
+
+Happy to share anything else or re-test a fix. All testing was against my own key; no other account was touched.
+
+— Amal Joe

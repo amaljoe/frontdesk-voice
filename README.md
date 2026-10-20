@@ -11,8 +11,15 @@ concierges. A single AssemblyAI key powers the whole loop:
           └──────────── barge-in: Cancel + discard ◀─────────── ▼ guarded tool execution          ▼ live captions
 ```
 
+🛡️ **Headline security finding — [security/REPORT.md](security/REPORT.md):** AssemblyAI's own Voice Agent
+quickstart ships a browser token it calls "single-use" and "one-time". On production it is none of those:
+**one token opened 5 concurrent sessions, was reusable for its full 600 s life, and worked across every
+product** (a streaming token drives paid TTS and the Voice Agent, and vice-versa). Responsibly disclosed, with
+runnable reproductions in [`security/probes/`](security/probes/) and a one-page report at
+[`security/scorecard.html`](security/scorecard.html). TTL enforcement and error hygiene are solid — credited in the report.
+
 🎬 **Demo video:** [`out/frontdesk-demo.mp4`](out/frontdesk-demo.mp4), a live, unedited browser call with a booking and a barge-in.
-🔍 **Security/reliability findings for the TTS & Voice Agent APIs:** [FINDINGS.md](FINDINGS.md)
+🔍 **Full protocol notes for the TTS & Voice Agent APIs:** [FINDINGS.md](FINDINGS.md)
 🤖 **Built with AssemblyAI's own agent tooling** (CLI scaffolder + code generator, coding-agent skill): [BUILT_WITH_ASSEMBLYAI_AGENT.md](BUILT_WITH_ASSEMBLYAI_AGENT.md)
 
 ## Two engines, switchable in the UI
