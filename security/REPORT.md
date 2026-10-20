@@ -16,7 +16,8 @@ WebSocket URL, with this justification in its code and its user-facing page:
 
 **The token is not single-use, not single-session, and not scoped to one product.** We opened five
 concurrent sessions from one token, reused it repeatedly, and used a token minted for one product to drive
-all the others (STT, TTS, Voice Agent, LLM Gateway). The TTL *is* correctly enforced and capped at 600s —
+the others we tested directly — Streaming STT, Streaming TTS, and the Voice Agent (a Voice Agent session in
+turn runs the LLM Gateway on the account's behalf). The TTL *is* correctly enforced and capped at 600s —
 so the real exposure window is "up to 10 minutes," not "forever," but within it the token is a reusable,
 cross-product bearer credential that any developer following the quickstart ships to the client.
 
