@@ -4,7 +4,7 @@
 security vulnerabilities. All testing used our own hackathon API key against **production** endpoints only,
 plus reading AssemblyAI's own open-source `assembly` CLI and starter code. No internal/labs/sandbox hosts
 were touched. Defensive intent: every finding ships with a reproduction and a fix. Reproductions live in
-[`security/probes/`](probes/); raw output in [`security/evidence-token.txt`](evidence-token.txt).
+[`security/probes/`](probes/); raw output in [`security/evidence-token.txt`](evidence-token.txt). **Reproduced on production 2026-10-20 and re-verified 2026-10-21.**
 
 ## TL;DR
 
@@ -24,17 +24,24 @@ Error handling, by contrast, is clean — no internal hosts, stack traces, or in
 
 ## Findings
 
-| # | Severity | Title |
-|---|---|---|
-| A | **High** | Browser tokens are reusable and multi-session despite "single-use" documentation |
-| B | **High** | Tokens are not scoped to the product they were minted for (STT ⇄ TTS ⇄ Voice Agent) |
-| C | Medium | No per-token connection/spend cap → one leaked token = concurrent paid work across all products |
-| D | Low | `GET /v1/token` with a bad key returns HTTP 404 (should be 401/403) |
-| ✓ | — (positive) | Error messages are clean; TTL is enforced and capped at 600s |
+| # | Severity | CVSS 3.1 | Title |
+|---|---|---|---|
+| A | **High** | 7.1 | Browser tokens are reusable and multi-session despite "single-use" documentation |
+| B | **High** | 7.1 | Tokens are not scoped to the product they were minted for (STT ⇄ TTS ⇄ Voice Agent) |
+| C | Medium | 5.0 | No per-token connection/spend cap → one leaked token = concurrent paid work across all products |
+| D | Low | 3.1 | `GET /v1/token` with a bad key returns HTTP 404 (should be 401/403) |
+| ✓ | — (positive) | — | Error messages are clean; TTL is enforced and capped at 600s |
+
+Scores model the *post-leak* abuse (a browser token is designed to be exposed in a client URL, so obtaining
+one is low-effort — the whole point of findings A/B is that exposure is expected and the token is supposed to
+be worthless once used). Vectors are given per finding; they are the researcher's assessment, not an official
+AssemblyAI rating.
 
 ---
 
 ### A. "Single-use" tokens are reusable and multi-session — High
+
+**CVSS 3.1: 7.1** (`AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L`) — a leaked token stays usable for its full life across a scope change (S:C), with low impact to each of C/I/A (another user's billed sessions, injected agent text, resource use).
 
 **Claim under test.** The starter and its page call the token "single-use" / "one-time". That property is
 the entire security argument for placing a token in a client-visible URL: even if it leaks (URLs land in
@@ -63,6 +70,8 @@ If multi-use is intended, stop calling them "single-use/one-time" in the starter
 
 ### B. Tokens are not product-scoped — High
 
+**CVSS 3.1: 7.1** (`AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L`) — the token crosses the product-authorization boundary it was issued for (S:C): capability it was never scoped to becomes reachable.
+
 **Observed** (`token-concurrency-scope.mjs`):
 ```
 streaming token on TTS:         ACCEPTED — cross-product (Begin)
@@ -83,6 +92,8 @@ each service's WebSocket handshake. This is the single highest-leverage fix; it 
 
 ### C. No per-token cap → quantified cost of a leak — Medium
 
+**CVSS 3.1: 5.0** (`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`) — availability/billing impact (uncapped concurrent paid sessions) with no direct C or I impact on its own.
+
 **Observed** (`cost-of-leak.mjs`): a browser token alone (no API key) drove billed TTS — 5.4s of audio in
 1.5s wall — and, combined with A and B, can do so concurrently across products with no per-token
 connection or spend limit we could find.
@@ -95,6 +106,8 @@ per use. At scale (a token harvested from many users of a popular starter-based 
 is bounded.
 
 ### D. Bad-key mint returns 404 — Low
+
+**CVSS 3.1: 3.1** (`AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N`) — minor information-quality/response-correctness issue; a 404 vs 401 can leak endpoint-existence signal and muddies integrator error handling.
 
 `GET https://agents.assemblyai.com/v1/token` with an invalid key returns **HTTP 404** `{"detail":"Invalid API
 key"}`. An auth failure should be `401` (or `403`); `404` is misleading for integrators and muddies
