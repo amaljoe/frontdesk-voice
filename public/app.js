@@ -49,11 +49,15 @@ async function dial() {
   if (new URLSearchParams(location.search).has('record')) record();
 }
 
-// ?record: capture caller + agent audio of the call (used to produce the demo video).
+// ?record: capture the call's audio for the demo. Agent (analyser) and caller (mic) are panned to
+// separate stereo channels so an inspector can tell exactly when each voice is active — L=agent, R=caller.
 function record() {
   const dest = ctx.createMediaStreamDestination();
-  analyser.connect(dest);
-  stopMic?.source.connect(dest);
+  const merger = ctx.createChannelMerger(2);
+  const agentPan = ctx.createGain(), callerPan = ctx.createGain();
+  analyser.connect(agentPan); agentPan.connect(merger, 0, 0);          // agent -> left
+  if (stopMic?.source) { stopMic.source.connect(callerPan); callerPan.connect(merger, 0, 1); } // caller -> right
+  merger.connect(dest);
   const rec = new MediaRecorder(dest.stream), parts = [];
   rec.ondataavailable = (e) => parts.push(e.data);
   rec.onstop = async () => {
