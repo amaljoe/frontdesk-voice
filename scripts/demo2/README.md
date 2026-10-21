@@ -1,4 +1,4 @@
-# Demo video build (90-second cut)
+# Demo video build (~2:17 cut)
 
 Regenerates `out/frontdesk-demo.mp4`: a title card, both engines answering a live call, the security
 finding reproduced in a terminal, and the scorecard — narrated by an AssemblyAI TTS voice (so even the

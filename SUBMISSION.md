@@ -41,6 +41,6 @@ end-to-end tests.
 9. AssemblyAI's coding agent (`assembly live`) can't run on hackathon keys.
 10-12. Voice Agent API: caller turns silently swallowed right after `reply.started`; a sample rate that's accepted then crashes the session; odd time pronunciation and event ordering.
 
-**Demo video:** out/frontdesk-demo.mp4 — 83s, narrated with AssemblyAI TTS. Arc: title → custom-pipeline call with barge-in → Voice Agent API call with a real tool call → the token security finding reproduced live → scorecard. Upload to YouTube (unlisted) or Drive and paste the link.
+**Demo video:** https://youtu.be/frIsHwOCgHY — "FrontDesk Demo | AssemblyAI hackathon submission", ~2:17, narrated with AssemblyAI TTS. Arc: title → custom-pipeline call (agent speaks in full, one clean barge-in) → Voice Agent API call with a real tool call → the token security finding reproduced live → scorecard.
 **Repo:** https://github.com/amaljoe/frontdesk-voice
 **Tech:** Node.js, ws, Web Audio (AudioWorklet), AssemblyAI Universal-Streaming v3, LLM Gateway, Streaming TTS v1

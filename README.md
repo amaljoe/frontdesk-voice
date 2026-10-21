@@ -18,7 +18,7 @@ product** (a streaming token drives paid TTS and the Voice Agent, and vice-versa
 runnable reproductions in [`security/probes/`](security/probes/) and a one-page report at
 [`security/scorecard.html`](security/scorecard.html). TTL enforcement and error hygiene are solid — credited in the report.
 
-🎬 **Demo video:** [`out/frontdesk-demo.mp4`](out/frontdesk-demo.mp4), a live, unedited browser call with a booking and a barge-in.
+🎬 **Demo video:** [youtu.be/frIsHwOCgHY](https://youtu.be/frIsHwOCgHY) — both engines answering live calls (agent speaks in full, one clean barge-in), then the token security finding reproduced live. Narrated with AssemblyAI TTS. Source file: [`out/frontdesk-demo.mp4`](out/frontdesk-demo.mp4).
 🔍 **Full protocol notes for the TTS & Voice Agent APIs:** [FINDINGS.md](FINDINGS.md)
 🤖 **Built with AssemblyAI's own agent tooling** (CLI scaffolder + code generator, coding-agent skill): [BUILT_WITH_ASSEMBLYAI_AGENT.md](BUILT_WITH_ASSEMBLYAI_AGENT.md)
 
