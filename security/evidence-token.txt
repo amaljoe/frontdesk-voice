@@ -1,0 +1,13 @@
+=== Voice Agent /v1/token lifecycle (production, 2026-10-20) ===
+use #1: ACCEPTED (session.updated)
+use #2 (same token, after #1 closed): ACCEPTED — NOT single-use (session.updated)
+use #3 (same token again): ACCEPTED (session.updated)
+expiry: minted 3s TTL, used after 8s: rejected (good) (session.error Authentication failed)
+TTL request 86400s: 422 Input should be less than or equal to 600
+TTL request 31536000s: 422 Input should be less than or equal to 600
+
+one token, 5 simultaneous VA sessions: 5/5 accepted
+streaming token on TTS:         ACCEPTED — cross-product (Begin)
+streaming token on Voice Agent: ACCEPTED — cross-product (session.updated)
+voice-agent token on TTS:       ACCEPTED — cross-product (Begin)
+voice-agent token on streaming: ACCEPTED — cross-product (Begin)
